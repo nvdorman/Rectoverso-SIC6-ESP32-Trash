@@ -1,0 +1,8 @@
+streamlit
+opencv-python
+numpy
+tensorflow
+pillow
+paho-mqtt
+requests
+urllib3
