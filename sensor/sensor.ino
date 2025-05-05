@@ -3,8 +3,8 @@
 #include <PubSubClient.h>
 
 // ========== WiFi ==========
-const char* ssid = "Xiaomi 13T";         // Ganti dengan SSID kamu
-const char* password = "";  // Ganti dengan password WiFi
+const char* ssid = "Xiaomi 13T";
+const char* password = "";
 
 // ========== MQTT ==========
 const char* mqtt_server = "broker.emqx.io";
@@ -19,40 +19,35 @@ PubSubClient client(espClient);
 #define ECHO_PIN 4
 
 // ========== SERVO ==========
-#define SERVO1_PIN 13
-#define SERVO2_PIN 14
-Servo servo1;
+#define SERVO2_PIN 21
 Servo servo2;
 
 bool bendaTerdeteksi = false;
 
 void callback(char* topic, byte* payload, unsigned int length) {
   String message;
-  for (int i = 0; i < length; i++) {
+  for (unsigned int i = 0; i < length; i++) {
     message += (char)payload[i];
   }
 
+  Serial.print("📩 Pesan MQTT diterima: ");
+  Serial.println(message);
+
   if (message == "Organik") {
-    Serial.println("🟢 Organik → Gerakkan Servo");
-    servo2.write(90);
-    delay(1000);
-    servo2.write(0);
-    delay(500);
-    servo1.write(95); // Simulasi 180°
+    Serial.println("🟢 Organik → Gerakkan ke kiri (0°)");
+    servo2.write(90); delay(1000);
+    servo2.write(0);  delay(500);
   } else if (message == "Anorganik") {
-    Serial.println("🔴 Anorganik → Gerakkan Servo");
-    servo2.write(90);
-    delay(1000);
-    servo2.write(0);
-    delay(500);
-    servo1.write(95);
+    Serial.println("🔴 Anorganik → Gerakkan ke kanan (180°)");
+    servo2.write(90); delay(1000);
+    servo2.write(0);  delay(500);
   }
 }
 
 void reconnectMQTT() {
   while (!client.connected()) {
     Serial.print("🔌 Reconnecting to MQTT...");
-    if (client.connect("ESP32Utama_Rectoverso")) {
+    if (client.connect("ESP32_NoServo1_Rectoverso")) {
       Serial.println("connected");
       client.subscribe(mqtt_sub_topic);
     } else {
@@ -65,18 +60,13 @@ void reconnectMQTT() {
 }
 
 void setup_wifi() {
-  delay(10);
-  Serial.println();
-  Serial.print("Connecting to ");
+  Serial.print("Connecting to WiFi: ");
   Serial.println(ssid);
-
   WiFi.begin(ssid, password);
-
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-
   Serial.println("\n✅ WiFi connected");
 }
 
@@ -84,29 +74,30 @@ long getDistance() {
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
-
-  long duration = pulseIn(ECHO_PIN, HIGH, 1000000); // Timeout 1 detik
-  return duration * 0.034 / 2; // Jarak dalam cm
+  long duration = pulseIn(ECHO_PIN, HIGH, 1000000); // timeout 1s
+  return duration * 0.034 / 2;
 }
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("🚀 Mulai setup...");
 
+  // Ultrasonik
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   digitalWrite(TRIG_PIN, LOW);
 
-  // Setup Servo
-  servo1.attach(SERVO1_PIN, 500, 2500);
+  // Servo
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+
+  servo2.setPeriodHertz(50);
   servo2.attach(SERVO2_PIN, 500, 2500);
-  servo1.write(95);  // Simulasi 180°
-  servo2.write(0);   // Tutup awal
+  servo2.write(0);   // Awal tutup
   delay(1000);
 
-  // Connect ke WiFi
+  // WiFi + MQTT
   setup_wifi();
-
-  // Setup MQTT
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
   reconnectMQTT();
@@ -119,7 +110,6 @@ void loop() {
     Serial.println("📦 Benda Terdeteksi → Kirim trigger ke CAM");
     bendaTerdeteksi = true;
     client.publish(mqtt_pub_topic, "true");
-    servo1.write(0);  // Tutup pintu utama
     delay(1000);
   } else if (distance > 10) {
     bendaTerdeteksi = false;
