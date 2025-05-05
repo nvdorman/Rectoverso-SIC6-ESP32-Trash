@@ -1,8 +1,10 @@
 streamlit
-opencv-python
+opencv-python-headless
 numpy
-tensorflow
+tensorflow==2.15.0
 pillow
 paho-mqtt
 requests
+keras==2.15.0
+h5py==3.13.0
 urllib3
