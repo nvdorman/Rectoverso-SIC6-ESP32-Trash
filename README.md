@@ -6,3 +6,5 @@
 - Rectoverso/rpl2/sic6/stage4/classification/result
 - Rectoverso/rpl2/sic6/stage4/status/servo
 - Rectoverso/rpl2/sic6/stage4/trigger/capture
+
+- https://nvdorman-rectoverso-sic6-esp32-trash-app-werbrb.streamlit.app/
